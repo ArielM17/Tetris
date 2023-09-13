@@ -1,9 +1,14 @@
 import javax.swing.*;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.GridLayout;
+import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 public class TetrisGame {
@@ -11,13 +16,14 @@ public class TetrisGame {
     private static final int COLUMNAS = 10;
     private static final int TAMANO_CELDA = 30;
     private static final int INTERVALO_CAIDA = 500; // 500 ms
-
+    private Color piezaColorActual;
     private Timer timer;
 
     private Random random = new Random();
-    private static final int FPS = 120; // Aumenta el FPS para una mayor fluidez
-    private static final int INTERVALO_ACTUALIZACION = 1000 / FPS;
-
+    // Agrega un campo para mantener el color original de la pieza actual
+    private Color colorOriginalPiezaActual = null;
+    // Agrega un campo para mantener un mapa de colores de las piezas en el tablero
+    private Map<Point, Color> coloresPiezasFijas = new HashMap<>();
 
     private static final int[][] PIEZA_L = {
             {1, 0},
@@ -59,9 +65,7 @@ public class TetrisGame {
     };
 
     private static final int[][][] PIEZAS_DISPONIBLES = {PIEZA_L, PIEZA_J, PIEZA_I, PIEZA_O, PIEZA_S, PIEZA_Z};
-    private Color[] piezaColorActual = new Color[FILAS * COLUMNAS]; // Arreglo para mantener los colores
     private Color[][] coloresTablero = new Color[FILAS][COLUMNAS];
-    private int indicePiezaActual; // Índice de la pieza actual
 
     private Color obtenerColorAleatorio() {
         Random random = new Random();
@@ -71,42 +75,27 @@ public class TetrisGame {
         return new Color(r, g, b);
     }
 
-    private void asignarColorPiezaActual(Color color) {
-        for (int fila = 0; fila < piezaActual.length; fila++) {
-            for (int columna = 0; columna < piezaActual[0].length; columna++) {
-                if (piezaActual[fila][columna] == 1) {
-                    int filaEnTablero = piezaY + fila;
-                    int columnaEnTablero = piezaX + columna;
-                    coloresTablero[filaEnTablero][columnaEnTablero] = color; // Asigna el color a la celda del tablero
-                }
-            }
-        }
-    }
-
     private int[][] generarPiezaAleatoria() {
         int indiceAleatorio = random.nextInt(PIEZAS_DISPONIBLES.length);
-        Color colorPieza = obtenerColorAleatorio(); // Genera un color aleatorio para la pieza
-        asignarColorPiezaActual(colorPieza); // Asigna el color a la pieza actual
+        piezaColorActual = obtenerColorAleatorio(); // Genera un color aleatorio para la pieza
         return PIEZAS_DISPONIBLES[indiceAleatorio];
     }
 
     private void fijarPiezaEnTablero() {
-        // Coloca la pieza actual en el tablero y establece el color correspondiente
+        // Coloca la pieza actual en el tablero
         for (int fila = 0; fila < piezaActual.length; fila++) {
             for (int columna = 0; columna < piezaActual[0].length; columna++) {
                 if (piezaActual[fila][columna] == 1) {
                     int filaEnTablero = piezaY + fila;
                     int columnaEnTablero = piezaX + columna;
                     tablero[filaEnTablero][columnaEnTablero] = true;
-                    coloresTablero[filaEnTablero][columnaEnTablero] = piezaColorActual[indicePiezaActual]; // Asigna el color de la pieza actual
+
+                    // Asigna el color al tablero desde el mapa de colores de piezas fijas
+                    coloresTablero[filaEnTablero][columnaEnTablero] = piezaColorActual;
                 }
             }
         }
-
-        // Incrementa el índice de la pieza actual
-        indicePiezaActual++;
     }
-
 
     private boolean esPosibleMoverPieza(int nuevaX, int nuevaY, int[][] nuevaPieza) {
         // Verifica que la nueva posición esté dentro de los límites del tablero
@@ -270,11 +259,11 @@ public class TetrisGame {
         int filas = piezaActual.length;
         int columnas = piezaActual[0].length;
 
-        // Dibuja la pieza en el tablero
+        // Dibuja la pieza en el tablero con el color actual
         for (int fila = 0; fila < filas; fila++) {
             for (int columna = 0; columna < columnas; columna++) {
                 if (piezaActual[fila][columna] == 1) {
-                    g.setColor(Color.ORANGE); // Color de la pieza
+                    g.setColor(piezaColorActual); // Utiliza el color asignado a la pieza actual
                     int x = (piezaX + columna) * TAMANO_CELDA;
                     int y = (piezaY + fila) * TAMANO_CELDA;
                     g.fillRect(x, y, TAMANO_CELDA, TAMANO_CELDA);
@@ -317,16 +306,18 @@ public class TetrisGame {
     }
 
     private void generarNuevaPieza() {
+        // Actualiza el color original de la pieza actual
+        colorOriginalPiezaActual = piezaColorActual;
+
+        // Limpia el mapa de colores de piezas fijas
+        coloresPiezasFijas.clear();
+
         // Genera una nueva pieza en la parte superior del tablero
         piezaX = COLUMNAS / 2 - 1;
         piezaY = 0;
 
         // Selecciona una pieza aleatoria de las disponibles
         piezaActual = generarPiezaAleatoria();
-
-        // Asigna un color aleatorio a la nueva pieza y almacénalo en piezaColorActual
-        Color colorAleatorio = obtenerColorAleatorio();
-        piezaColorActual[indicePiezaActual] = colorAleatorio;
 
         // Detiene el temporizador para dar tiempo al jugador de manejar la nueva pieza
         timer.stop();
